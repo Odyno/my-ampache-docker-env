@@ -9,11 +9,12 @@ on:
       - master
 
 jobs:
-  generate-matrix:
+  generate-context:
     name: Generate Jobs
     runs-on: ubuntu-latest
     outputs:
       strategy: ${{ steps.generate-jobs.outputs.strategy }}
+      platforms: ${{ steps.set-platforms.outputs.platforms }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -32,22 +33,23 @@ jobs:
           strategy="{\"include\":[ ${strategy_content:1} ]}"
           echo "strategy=$strategy" >> "$GITHUB_OUTPUT"
           jq . <<<"$strategy" # sanity check / debugging aid
+        
+      - id: set-platforms
+        name: Set platforms
+        run: |
+          echo "::set-output name=platforms::\"linux/amd64\" \"linux/arm64\""
   
   
   build:
-    needs: generate-matrix
+    needs: generate-context
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.strategy) }}
+      matrix: ${{ fromJson(needs.generate-contex.outputs.strategy) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-        
-      - name: Set platforms
-        id: set-platforms
-        run: |
-          echo "::set-output name=platforms::\"linux/amd64\" \"linux/arm64\""
+
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -55,19 +57,17 @@ jobs:
       - name: Build Docker image for ${{ matrix.version }}-${{ matrix.variant }}
         run: |
           # Get the platforms from the job output
-          platforms=(${{ needs.generate-matrix.outputs.platforms }})
+          platforms=(${{ needs.generate-context.outputs.platforms }})
 
           # Build 
           cd ${{ matrix.version }}/${{ matrix.variant }}
           docker buildx build --platform $platform -t odyno/ampache:${{ matrix.version }}-${{ matrix.variant }} .
           cd ../../
 
-
-
       - name: Test Docker image
         run: |
           # Get the platforms from the job output
-          platforms=(${{ needs.generate-matrix.outputs.platforms }})
+          platforms=(${{ needs.generate-context.outputs.platforms }})
           
           # Loop over each platform
           for platform in "${platforms[@]}"; do
@@ -89,7 +89,7 @@ jobs:
       - name: Push Docker image to Docker Hub
         run: |
           # Get the platforms from the job output
-          platforms=(${{ needs.generate-matrix.outputs.platforms }})
+          platforms=(${{ needs.generate-context.outputs.platforms }})
           
           # Loop over each platform
           for platform in "${platforms[@]}"; do
