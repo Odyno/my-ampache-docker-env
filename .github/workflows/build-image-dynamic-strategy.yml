@@ -59,12 +59,11 @@ jobs:
           # Get the platforms from the job output
           platforms=(${{ needs.generate-context.outputs.platforms }})
 
-          echo  docker buildx build --platform "${platforms[@]}" -t odyno/ampache:${{ matrix.version }}-${{ matrix.variant }} .
-
+          IFS=','; platforms_str="${platforms[*]}"; IFS=' '
 
           # Build 
           cd ${{ matrix.version }}/${{ matrix.variant }}
-          docker buildx build --platform "${platforms[@]}" -t odyno/ampache:${{ matrix.version }}-${{ matrix.variant }} .
+          docker buildx build --platform $platforms_str -t odyno/ampache:${{ matrix.version }}-${{ matrix.variant }} .
           cd ../../
 
       - name: Test Docker image
