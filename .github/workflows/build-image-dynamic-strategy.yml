@@ -61,7 +61,7 @@ jobs:
 
           # Build 
           cd ${{ matrix.version }}/${{ matrix.variant }}
-          docker buildx build --platform $platform -t odyno/ampache:${{ matrix.version }}-${{ matrix.variant }} .
+          docker buildx build --platform ${platforms[@]} -t odyno/ampache:${{ matrix.version }}-${{ matrix.variant }} .
           cd ../../
 
       - name: Test Docker image
