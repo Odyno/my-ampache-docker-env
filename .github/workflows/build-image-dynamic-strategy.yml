@@ -69,12 +69,6 @@ jobs:
           # Build 
           cd ${{ matrix.version }}/${{ matrix.variant }}
           docker buildx build --platform $platforms_str -t odyno/ampache:${{ matrix.version }}-${{ matrix.variant }} .
-          cd ../../
-
-      - name: Test Docker image
-        run: |
-          # Get the platforms from the job output
-          platforms=(${{ needs.generate-context.outputs.platforms }})
           
           # Loop over each platform
           for platform in "${platforms[@]}"; do
@@ -87,14 +81,7 @@ jobs:
             docker rm test_container_$platform
           done
 
+          docker push odyno/ampache:${{ matrix.version }}-${{ matrix.variant }}
 
-
-      - name: Push Docker image to Docker Hub
-        run: |
-          # Get the platforms from the job output
-          platforms=(${{ needs.generate-context.outputs.platforms }})
           
-          # Loop over each platform
-          for platform in "${platforms[@]}"; do
-            docker push odyno/ampache:${{ matrix.version }}-${{ matrix.variant }}
-          done
+          cd ../../
