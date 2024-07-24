@@ -181,7 +181,8 @@ function create_variant() {
         
     ' "$dir/Dockerfile"
 
-    copy_config  data "$dir/data" $variant "${variants[@]}"
+    copy_config data "$dir/data" $variant "${variants[@]}"
+    copy_config .bin "$dir" $variant "${variants[@]}"
 }
 
 
