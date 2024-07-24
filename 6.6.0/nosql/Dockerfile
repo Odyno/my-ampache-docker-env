@@ -1,9 +1,10 @@
-FROM debian:%%DEBIAN_VERSION%% as basesystem
+# DO NOT EDIT: created by update_maintainer_version from Dockerfile-debian-nosql.template 
+FROM debian:bookworm as basesystem
 LABEL maintainer="lachlan-00"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DISABLE_INOTIFYWAIT_CLEAN 0
-ARG VERSION=%%AMPACHE_VERSION%%
+ARG VERSION=
 
 # Add Debian package sources for main and security repositories
 RUN   sh -c 'echo "Types: deb\n# http://snapshot.debian.org/archive/debian/20230612T000000Z\nURIs: http://deb.debian.org/debian\nSuites: stable stable-updates\nComponents: main contrib non-free\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n\nTypes: deb\n# http://snapshot.debian.org/archive/debian-security/20230612T000000Z\nURIs: http://deb.debian.org/debian-security\nSuites: stable-security\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n" > /etc/apt/sources.list.d/debian.sources' &&\
@@ -36,14 +37,14 @@ RUN   sh -c 'echo "Types: deb\n# http://snapshot.debian.org/archive/debian/20230
               libvpx-dev \
               locales \
               logrotate \
-              php%%PHP_VERSION%% \
-              php%%PHP_VERSION%%-curl \
-              php%%PHP_VERSION%%-gd \
-              php%%PHP_VERSION%%-intl \
-              php%%PHP_VERSION%%-ldap \
-              php%%PHP_VERSION%%-mysql \
-              php%%PHP_VERSION%%-xml \
-              php%%PHP_VERSION%%-zip \
+              php8.3 \
+              php8.3-curl \
+              php8.3-gd \
+              php8.3-intl \
+              php8.3-ldap \
+              php8.3-mysql \
+              php8.3-xml \
+              php8.3-zip \
               pwgen \
               supervisor \
               vorbis-tools \
@@ -67,7 +68,7 @@ RUN   sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen &&\
 FROM basesystem
 
 #Configure Cron
-RUN   echo '%%CRON_TIME%%   /usr/local/bin/ampache_cron.sh' | crontab -u www-data - 
+RUN   echo '30 * * * *   /usr/local/bin/ampache_cron.sh' | crontab -u www-data - 
 
 #Configure Apache
 COPY data/sites-enabled/001-ampache.conf /etc/apache2/sites-available/
@@ -82,7 +83,7 @@ RUN   mkdir -p /var/log/ampache &&\
 
 # Download and extract Ampache source code
 RUN   rm -rf /var/www/* &&\
-      curl -sSLo /tmp/master.zip %%DOWNLOAD_URL%% &&\
+      curl -sSLo /tmp/master.zip https://github.com/ampache/ampache/releases/download/6.6.0/ampache-6.6.0_all_php8.3.zip &&\
       unzip /tmp/master.zip -d /var/www/ &&\
       cp -f /var/www/public/rest/.htaccess.dist /var/www/public/rest/.htaccess &&\
       cp -f /var/www/public/play/.htaccess.dist /var/www/public/play/.htaccess &&\
@@ -105,7 +106,7 @@ RUN   rm -rf /var/www/* &&\
 
 # Configure Ampache Context
 COPY data/bin/run.sh data/bin/inotifywait.sh data/bin/cron.sh data/bin/apache2.sh data/bin/ampache_cron.sh data/bin/docker-entrypoint.sh /usr/local/bin/
-COPY data/apache2/php.ini /etc/php/%%PHP_VERSION%%/apache2/
+COPY data/apache2/php.ini /etc/php/8.3/apache2/
 COPY data/logrotate.d/* /etc/logrotate.d/
 COPY data/supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
