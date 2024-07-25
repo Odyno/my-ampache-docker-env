@@ -9,11 +9,12 @@ on:
       - master
 
 jobs:
-  generate-matrix:
+  generate-context:
     name: Generate Jobs
     runs-on: ubuntu-latest
     outputs:
       strategy: ${{ steps.generate-jobs.outputs.strategy }}
+      platforms: ${{ steps.set-platforms.outputs.platforms }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -32,23 +33,65 @@ jobs:
           strategy="{\"include\":[ ${strategy_content:1} ]}"
           echo "strategy=$strategy" >> "$GITHUB_OUTPUT"
           jq . <<<"$strategy" # sanity check / debugging aid
+        
+      - id: set-platforms
+        name: Set platforms
+        run: |
+          echo "::set-output name=platforms::\"linux/amd64\" \"linux/arm64\""
   
   
   build:
-    needs: generate-matrix
+    needs: generate-context
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.strategy) }}
+      matrix: ${{ fromJson(needs.generate-context.outputs.strategy) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
       - name: Build Docker image for ${{ matrix.version }}-${{ matrix.variant }}
         run: |
+          # Get the platforms from the job output
+
+
+          platforms=(${{ needs.generate-context.outputs.platforms }})
+
+          IFS=','; platforms_str="${platforms[*]}"; IFS=' '
+
+          # Build 
           cd ${{ matrix.version }}/${{ matrix.variant }}
-          docker buildx build --platform linux/amd64,linux/arm64 -t odyssey/ampache:${{ matrix.version }}-${{ matrix.variant }} .
+          . ./build.sh ${{ matrix.version }} ${{ matrix.variant }} ${platforms_str}
           cd ../../
+          
+      - name: Test Docker image for ${{ matrix.version }}-${{ matrix.variant }}
+        run: |
+          # Get the platforms from the job output
+          platforms=(${{ needs.generate-context.outputs.platforms }})
+          
+          # Loop over each platform
+          for platform in "${platforms[@]}"; do
+
+            # Run a test container from the image for the current platform (maybe a cli command)
+            docker run --name test_container_$platform --platform $platform -d odyno/ampache:${{ matrix.version }}-${{ matrix.variant }} ls
+            
+            # Stop and remove the container
+            docker stop test_container_$platform
+            docker rm test_container_$platform
+          done
+          
+      - name: Publish Docker image for ${{ matrix.version }}-${{ matrix.variant }}
+        run: |
+          docker push odyno/ampache:${{ matrix.version }}-${{ matrix.variant }}
+
+          
+ 
